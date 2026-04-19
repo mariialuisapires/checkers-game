@@ -4,6 +4,7 @@ import { GameController } from './controllers/gameController.js';
 import Lobby from './components/Lobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import GameInfo from './components/GameInfo.jsx';
+import HelpModal from './components/HelpModal.jsx';
 
 function App() {
   const [connected, setConnected] = useState(false);
@@ -18,6 +19,7 @@ function App() {
   const [shakingCell, setShakingCell] = useState(null);
   const [opponentAbandoned, setOpponentAbandoned] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Refs para evitar stale closures nos handlers do SignalR
   const controllerRef = useRef(null);
@@ -236,7 +238,14 @@ function App() {
 
   return (
     <div className="app">
-      <h1 className="title">♟ Jogo de Damas</h1>
+      <div className="app-header">
+        <h1 className="title">♟ Jogo de Damas</h1>
+        <button className="btn-help" onClick={() => setShowHelp(true)} title="Regras do jogo">
+          ?
+        </button>
+      </div>
+
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {error && <div className="error-toast">{error}</div>}
 
       {opponentAbandoned && (
