@@ -17,6 +17,7 @@ function App() {
   const [dragSource, setDragSource] = useState(null);
   const [shakingCell, setShakingCell] = useState(null);
   const [opponentAbandoned, setOpponentAbandoned] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   // Refs para evitar stale closures nos handlers do SignalR
   const controllerRef = useRef(null);
@@ -27,6 +28,18 @@ function App() {
   useEffect(() => { gameIdRef.current = gameId; }, [gameId]);
   useEffect(() => { validMovesRef.current = validMoves; }, [validMoves]);
   useEffect(() => { dragSourceRef.current = dragSource; }, [dragSource]);
+
+  // Temporizador: inicia quando a partida começa, para quando termina ou é resetada
+  useEffect(() => {
+    if (gameState?.status === 'playing') {
+      setElapsedTime(0);
+      const interval = setInterval(() => setElapsedTime(t => t + 1), 1000);
+      return () => clearInterval(interval);
+    }
+    if (!gameState || gameState.status === 'waiting') {
+      setElapsedTime(0);
+    }
+  }, [gameState?.status]);
 
   const showError = (msg) => {
     setError(msg);
@@ -239,7 +252,7 @@ function App() {
         </div>
       )}
 
-      <GameInfo gameState={gameState} />
+      <GameInfo gameState={gameState} elapsedTime={elapsedTime} />
       <GameBoard
         gameState={gameState}
         selectedPiece={selectedPiece}

@@ -1,14 +1,18 @@
 import React from 'react';
 
-function GameInfo({ gameState }) {
+function GameInfo({ gameState, elapsedTime }) {
   if (!gameState) return null;
 
   const { currentPlayer, status, winner, redPieces, blackPieces,
           inMultiCapture, playerRole } = gameState;
 
-  const isYourTurn = playerRole && playerRole === currentPlayer;
+  const isYourTurn  = playerRole && playerRole === currentPlayer;
   const currentName = currentPlayer === 'red' ? 'Vermelho' : 'Preto';
-  const roleName = playerRole === 'red' ? 'Vermelho' : playerRole === 'black' ? 'Preto' : null;
+  const roleName    = playerRole === 'red' ? 'Vermelho' : playerRole === 'black' ? 'Preto' : null;
+
+  const mm = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+  const ss = String(elapsedTime % 60).padStart(2, '0');
+  const timeLabel = `${mm}:${ss}`;
 
   return (
     <div className="game-info">
@@ -31,7 +35,9 @@ function GameInfo({ gameState }) {
           )}
           {status === 'finished' && (
             <span className="badge badge-win">
-              {winner === playerRole ? '🏆 Você Venceu!' : `${winner === 'red' ? 'Vermelho' : 'Preto'} Venceu!`}
+              {winner === playerRole
+                ? '🏆 Você Venceu!'
+                : `${winner === 'red' ? 'Vermelho' : 'Preto'} Venceu!`}
             </span>
           )}
         </div>
@@ -43,6 +49,15 @@ function GameInfo({ gameState }) {
             <span className="score-count">{blackPieces}</span>
           </div>
         </div>
+      </div>
+
+      {/* Temporizador */}
+      <div className={`timer ${status === 'finished' ? 'timer-finished' : ''}`}>
+        <span className="timer-icon">⏱</span>
+        <span className="timer-value">{timeLabel}</span>
+        {status === 'finished' && (
+          <span className="timer-label">Duração da partida</span>
+        )}
       </div>
 
       {roleName && (
