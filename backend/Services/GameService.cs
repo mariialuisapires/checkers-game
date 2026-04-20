@@ -70,11 +70,10 @@ public class GameService
             return GetCaptures(game, row, col);
         }
 
-        // Captura obrigatória: se alguma peça do jogador pode capturar, deve capturar
-        if (HasAnyCapture(game, game.CurrentPlayer))
-            return GetCaptures(game, row, col);
-
-        return GetSimpleMoves(game, row, col);
+        // Jogador escolhe livremente: movimentos simples + capturas disponíveis
+        var moves = GetSimpleMoves(game, row, col);
+        moves.AddRange(GetCaptures(game, row, col));
+        return moves;
     }
 
     private bool HasAnyCapture(GameState game, PlayerColor player)
@@ -216,8 +215,7 @@ public class GameService
             return;
         }
 
-        // Verifica se o jogador atual tem algum movimento válido
-        bool hasMandatory = HasAnyCapture(game, game.CurrentPlayer);
+        // Verifica se o jogador atual tem algum movimento válido (simples ou captura)
         bool hasAnyMove = false;
 
         for (int r = 0; r < 8 && !hasAnyMove; r++)
@@ -225,9 +223,8 @@ public class GameService
             {
                 var p = game.Board[r, c];
                 if (p?.Color == game.CurrentPlayer)
-                    hasAnyMove = hasMandatory
-                        ? GetCaptures(game, r, c).Count > 0
-                        : GetSimpleMoves(game, r, c).Count > 0;
+                    hasAnyMove = GetSimpleMoves(game, r, c).Count > 0
+                              || GetCaptures(game, r, c).Count > 0;
             }
 
         if (!hasAnyMove)

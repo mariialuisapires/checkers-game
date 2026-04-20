@@ -24,3 +24,4 @@ C:\Users\lully\checkers-game\backend\obj\Debug\net8.0\refint\CheckersGame.dll
 C:\Users\lully\checkers-game\backend\obj\Debug\net8.0\CheckersGame.pdb
 C:\Users\lully\checkers-game\backend\obj\Debug\net8.0\CheckersGame.genruntimeconfig.cache
 C:\Users\lully\checkers-game\backend\obj\Debug\net8.0\ref\CheckersGame.dll
+C:\Users\lully\checkers-game\backend\obj\Debug\net8.0\CheckersGame.sourcelink.json
