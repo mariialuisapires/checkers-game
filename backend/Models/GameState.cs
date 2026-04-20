@@ -17,4 +17,5 @@ public class GameState
     public int? MultiCaptureCol { get; set; }
     public int RedPieces { get; set; } = 12;
     public int BlackPieces { get; set; } = 12;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
 
+function useCountdown(expiresAt) {
+  const [remaining, setRemaining] = useState(null);
+
+  useEffect(() => {
+    if (!expiresAt) { setRemaining(null); return; }
+
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((new Date(expiresAt) - Date.now()) / 1000));
+      setRemaining(diff);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  if (remaining === null) return null;
+  const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const s = String(remaining % 60).padStart(2, '0');
+  return { display: `${m}:${s}`, urgent: remaining <= 30, expired: remaining === 0 };
+}
+
 function Lobby({
   gameId, waiting, joinRequest, joinPending,
-  openGames, onCreateGame, onJoinGame,
+  openGames, expiresAt,
+  onCreateGame, onJoinGame,
   onApproveJoin, onDenyJoin,
   onRefreshGames, onCancel, error,
 }) {
   const [joinId, setJoinId] = useState('');
+  const countdown = useCountdown(expiresAt);
 
   useEffect(() => {
     onRefreshGames();
@@ -14,7 +37,7 @@ function Lobby({
     return () => clearInterval(interval);
   }, [onRefreshGames]);
 
-  /* ── Player 2: aguardando aprovação ──────────────────── */
+  /* ── Player 2: aguardando aprovação ──────────────────────── */
   if (joinPending) {
     return (
       <div className="lobby">
@@ -36,34 +59,42 @@ function Lobby({
     );
   }
 
-  /* ── Player 1: sala de espera com/sem solicitação pendente ── */
+  /* ── Player 1: sala de espera ────────────────────────────── */
   if (waiting) {
     return (
       <div className="lobby">
         <h1 className="title">♟ Jogo de Damas</h1>
 
         {joinRequest ? (
-          /* Solicitação de entrada recebida */
           <div className="waiting-card join-request-card">
             <div className="join-request-icon">🔔</div>
             <h2>Solicitação de entrada</h2>
             <p>Um jogador quer entrar na sua partida.<br />Deseja permitir?</p>
+            {countdown && (
+              <div className={`lobby-countdown ${countdown.urgent ? 'lobby-countdown-urgent' : ''}`}>
+                ⏱ Expira em <strong>{countdown.display}</strong>
+              </div>
+            )}
             <div className="join-request-actions">
-              <button className="btn-approve" onClick={onApproveJoin}>
-                ✓ Aceitar
-              </button>
-              <button className="btn-deny" onClick={onDenyJoin}>
-                ✕ Recusar
-              </button>
+              <button className="btn-approve" onClick={onApproveJoin}>✓ Aceitar</button>
+              <button className="btn-deny"    onClick={onDenyJoin}>✕ Recusar</button>
             </div>
           </div>
         ) : (
-          /* Aguardando sem solicitação */
           <div className="waiting-card">
             <div className="waiting-icon">⏳</div>
             <h2>Aguardando Jogador 2...</h2>
             <p>Compartilhe o código abaixo com seu adversário:</p>
             <div className="game-code">{gameId}</div>
+
+            {countdown && (
+              <div className={`lobby-countdown ${countdown.urgent ? 'lobby-countdown-urgent' : ''}`}>
+                {countdown.expired
+                  ? '⌛ Expirando...'
+                  : <>⏱ Expira em <strong>{countdown.display}</strong></>}
+              </div>
+            )}
+
             <p className="hint">O segundo jogador deve entrar com este código — você precisará aprovar a entrada.</p>
             <button className="btn-outline-danger" style={{ marginTop: '20px' }} onClick={onCancel}>
               Cancelar Sala
@@ -74,7 +105,7 @@ function Lobby({
     );
   }
 
-  /* ── Lobby principal ─────────────────────────────────── */
+  /* ── Lobby principal ─────────────────────────────────────── */
   return (
     <div className="lobby">
       <h1 className="title">♟ Jogo de Damas</h1>

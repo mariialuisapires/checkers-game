@@ -32,6 +32,10 @@ export class GameController {
     return this.connection.invoke('AbandonGame', gameId);
   }
 
+  rejoinLobby(gameId) {
+    return this.connection.invoke('RejoinLobby', gameId);
+  }
+
   getOpenGames() {
     return this.connection.invoke('GetOpenGames');
   }

@@ -24,6 +24,7 @@ public class GameStateDto
     public int RedPieces { get; set; }
     public int BlackPieces { get; set; }
     public string? PlayerRole { get; set; }
+    public string? ExpiresAt  { get; set; }  // ISO-8601, apenas para status=waiting
 }
 
 public class GameListItemDto

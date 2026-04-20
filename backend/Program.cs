@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<GameService>();
+builder.Services.AddHostedService<GameExpiryService>();
 
 builder.Services.AddCors(options =>
 {

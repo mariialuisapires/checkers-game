@@ -20,6 +20,21 @@ public class GameHub : Hub
             _gameService.ToDto(game, Context.ConnectionId));
     }
 
+    // Reconecta o criador à sua sala após um refresh de página
+    public async Task RejoinLobby(string gameId)
+    {
+        var game = _gameService.RejoinAsHost(gameId, Context.ConnectionId);
+        if (game == null)
+        {
+            await Clients.Caller.SendAsync("GameExpired");
+            return;
+        }
+        await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+        await Clients.Caller.SendAsync("GameCreated", gameId);
+        await Clients.Caller.SendAsync("GameStateUpdated",
+            _gameService.ToDto(game, Context.ConnectionId));
+    }
+
     // Player 2 solicita entrada — o criador precisa aprovar
     public async Task RequestJoin(string gameId)
     {

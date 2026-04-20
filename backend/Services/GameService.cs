@@ -6,6 +6,9 @@ public class GameService
 {
     private readonly Dictionary<string, GameState> _games = new();
 
+    // Tempo de expiração das salas em espera (usado também pelo GameExpiryService)
+    public const int LobbyExpiryMinutes = 2;
+
     public GameState CreateGame(string connectionId)
     {
         var game = new GameState();
@@ -315,7 +318,10 @@ public class GameService
                 : null,
             RedPieces = game.RedPieces,
             BlackPieces = game.BlackPieces,
-            PlayerRole = role
+            PlayerRole = role,
+            ExpiresAt  = game.Status == GameStatus.Waiting
+                ? game.CreatedAt.AddMinutes(LobbyExpiryMinutes).ToString("o")
+                : null
         };
     }
 
@@ -346,6 +352,33 @@ public class GameService
         }
 
         return (true, opponentId);
+    }
+
+    // Reconecta o criador após um refresh de página (atualiza o connectionId)
+    public GameState? RejoinAsHost(string gameId, string newConnectionId)
+    {
+        var game = GetGame(gameId);
+        if (game == null || game.Status != GameStatus.Waiting) return null;
+        game.Player1ConnectionId = newConnectionId;
+        return game;
+    }
+
+    // Expira salas em espera mais antigas que `minutes` minutos.
+    // Retorna lista de (hostId, pendingRequesterId?) para notificação via Hub.
+    public List<(string? HostId, string? PendingId)> ExpireWaitingGames(int minutes)
+    {
+        var cutoff  = DateTime.UtcNow.AddMinutes(-LobbyExpiryMinutes);
+        var expired = _games.Values
+            .Where(g => g.Status == GameStatus.Waiting && g.CreatedAt < cutoff)
+            .ToList();
+
+        var result = new List<(string?, string?)>();
+        foreach (var game in expired)
+        {
+            result.Add((game.Player1ConnectionId, game.PendingJoinConnectionId));
+            _games.Remove(game.GameId);
+        }
+        return result;
     }
 
     public void HandleDisconnect(string connectionId)

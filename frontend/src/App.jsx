@@ -38,6 +38,8 @@ const HomeSvg = () => (
 /* ── App ────────────────────────────────────────────────────── */
 function App() {
   const [connected, setConnected] = useState(false);
+  // true enquanto aguarda resposta do RejoinLobby (evita flash do lobby com jogo próprio listado)
+  const [rejoining, setRejoining] = useState(() => !!sessionStorage.getItem('pendingGameId'));
   const [gameId, setGameId] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [selectedPiece, setSelectedPiece] = useState(null);
@@ -81,9 +83,13 @@ function App() {
     const ctrl = new GameController(conn);
     controllerRef.current = ctrl;
 
-    conn.on('GameCreated', (id) => setGameId(id));
+    conn.on('GameCreated', (id) => {
+      setGameId(id);
+      sessionStorage.setItem('pendingGameId', id);
+    });
 
     conn.on('GameStateUpdated', (state) => {
+      setRejoining(false);
       setGameId(state.gameId);
       setGameState(state);
       setSelectedPiece(null);
@@ -91,6 +97,9 @@ function App() {
       setError(null);
       setJoinRequest(false);
       setJoinPending(null);
+      // Jogo iniciado ou encerrado: limpa sessão de sala pendente
+      if (state.status === 'playing' || state.status === 'finished')
+        sessionStorage.removeItem('pendingGameId');
 
       if (state.inMultiCapture && state.multiCapturePiece
           && state.playerRole === state.currentPlayer) {
@@ -106,10 +115,21 @@ function App() {
     });
 
     conn.on('GameAbandoned', () => {
+      sessionStorage.removeItem('pendingGameId');
       setGameId(null);
       setGameState(null);
       setConfirmAbandon(false);
       setOpponentAbandoned(false);
+    });
+
+    conn.on('GameExpired', () => {
+      setRejoining(false);
+      sessionStorage.removeItem('pendingGameId');
+      setGameId(null);
+      setGameState(null);
+      setJoinPending(null);
+      setError('A sala expirou por inatividade. Nenhum jogador entrou a tempo.');
+      setTimeout(() => setError(null), 5000);
     });
 
     conn.on('OpponentAbandoned', () => setOpponentAbandoned(true));
@@ -125,7 +145,17 @@ function App() {
     conn.onclose(() => setConnected(false));
 
     startConnection()
-      .then(() => setConnected(true))
+      .then(() => {
+        setConnected(true);
+        const savedGameId = sessionStorage.getItem('pendingGameId');
+        if (savedGameId) {
+          ctrl.rejoinLobby(savedGameId).catch(() => {
+            // Sala não existe mais: limpa sessão e volta ao lobby normalmente
+            setRejoining(false);
+            sessionStorage.removeItem('pendingGameId');
+          });
+        }
+      })
       .catch(console.error);
 
     return () => conn.stop();
@@ -234,6 +264,15 @@ function App() {
     );
   }
 
+  if (rejoining) {
+    return (
+      <div className="loading">
+        <div className="spinner" />
+        Reconectando à sua sala...
+      </div>
+    );
+  }
+
   const inGame  = gameId && gameState && gameState.status !== 'waiting';
   const waiting = gameId && gameState?.status === 'waiting';
 
@@ -246,6 +285,7 @@ function App() {
         joinRequest={joinRequest}
         joinPending={joinPending}
         openGames={openGames}
+        expiresAt={gameState?.expiresAt}
         onCreateGame={handleCreateGame}
         onJoinGame={handleJoinGame}
         onApproveJoin={handleApproveJoin}

@@ -263,6 +263,32 @@ body {
 }
 .hint { font-size: 0.85rem; color: #8b949e; margin-top: 8px; }
 
+.lobby-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.88rem;
+  color: #8b949e;
+  margin: 4px 0;
+  transition: all 0.3s;
+}
+.lobby-countdown strong {
+  font-family: 'Courier New', monospace;
+  color: #e6edf3;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+.lobby-countdown-urgent {
+  border-color: #da3633;
+  color: #da3633;
+  animation: pulse-border 1s ease-in-out infinite;
+}
+.lobby-countdown-urgent strong { color: #da3633; }
+
 /* ── Solicitação de entrada ──────────────────────────── */
 .join-request-card {
   border-color: #d29922 !important;
