@@ -6,6 +6,34 @@ import GameBoard from './components/GameBoard.jsx';
 import GameInfo from './components/GameInfo.jsx';
 import HelpModal from './components/HelpModal.jsx';
 
+/* ── SVG Icons ──────────────────────────────────────────────── */
+const HelpSvg = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+    <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+  </svg>
+);
+
+const ExitSvg = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+);
+
+const HomeSvg = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+);
+
+/* ── App ────────────────────────────────────────────────────── */
 function App() {
   const [connected, setConnected] = useState(false);
   const [gameId, setGameId] = useState(null);
@@ -15,34 +43,30 @@ function App() {
   const [openGames, setOpenGames] = useState([]);
   const [error, setError] = useState(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
-  const [joinRequest, setJoinRequest] = useState(false);   // Player 1: tem solicitação pendente
-  const [joinPending, setJoinPending] = useState(null);    // Player 2: aguardando aprovação (gameId)
+  const [joinRequest, setJoinRequest] = useState(false);
+  const [joinPending, setJoinPending] = useState(null);
   const [dragSource, setDragSource] = useState(null);
   const [shakingCell, setShakingCell] = useState(null);
   const [opponentAbandoned, setOpponentAbandoned] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
 
-  // Refs para evitar stale closures nos handlers do SignalR
   const controllerRef = useRef(null);
-  const gameIdRef = useRef(null);
-  const validMovesRef = useRef([]);   // ref para evitar stale closure no drop
+  const gameIdRef     = useRef(null);
+  const validMovesRef = useRef([]);
   const dragSourceRef = useRef(null);
 
   useEffect(() => { gameIdRef.current = gameId; }, [gameId]);
   useEffect(() => { validMovesRef.current = validMoves; }, [validMoves]);
   useEffect(() => { dragSourceRef.current = dragSource; }, [dragSource]);
 
-  // Temporizador: inicia quando a partida começa, para quando termina ou é resetada
   useEffect(() => {
     if (gameState?.status === 'playing') {
       setElapsedTime(0);
       const interval = setInterval(() => setElapsedTime(t => t + 1), 1000);
       return () => clearInterval(interval);
     }
-    if (!gameState || gameState.status === 'waiting') {
-      setElapsedTime(0);
-    }
+    if (!gameState || gameState.status === 'waiting') setElapsedTime(0);
   }, [gameState?.status]);
 
   const showError = (msg) => {
@@ -58,8 +82,6 @@ function App() {
     conn.on('GameCreated', (id) => setGameId(id));
 
     conn.on('GameStateUpdated', (state) => {
-      // Garante que o gameId fique definido para ambos os jogadores
-      // (o criador recebe via GameCreated; quem entra só recebe GameStateUpdated)
       setGameId(state.gameId);
       setGameState(state);
       setSelectedPiece(null);
@@ -68,7 +90,6 @@ function App() {
       setJoinRequest(false);
       setJoinPending(null);
 
-      // Captura múltipla: auto-seleciona a peça e busca destinos válidos
       if (state.inMultiCapture && state.multiCapturePiece
           && state.playerRole === state.currentPlayer) {
         const { row, col } = state.multiCapturePiece;
@@ -89,22 +110,13 @@ function App() {
       setOpponentAbandoned(false);
     });
 
-    conn.on('OpponentAbandoned', () => {
-      setOpponentAbandoned(true);
-    });
-
-    // Player 2: servidor confirmou que a solicitação foi enviada ao criador
+    conn.on('OpponentAbandoned', () => setOpponentAbandoned(true));
     conn.on('JoinRequested', (gId) => setJoinPending(gId));
-
-    // Player 1: chegou uma solicitação de entrada
     conn.on('JoinRequest', () => setJoinRequest(true));
-
-    // Player 2: criador recusou
     conn.on('JoinDenied', () => {
       setJoinPending(null);
       showError('Solicitação recusada pelo criador da partida.');
     });
-
     conn.on('OpenGames', (games) => setOpenGames(games));
     conn.on('Error', showError);
     conn.onreconnected(() => setConnected(true));
@@ -119,7 +131,7 @@ function App() {
 
   const handleCellClick = useCallback(async (row, col) => {
     const ctrl = controllerRef.current;
-    const gId = gameIdRef.current;
+    const gId  = gameIdRef.current;
     if (!gameState || !ctrl || !gId) return;
     if (gameState.status !== 'playing') return;
     if (!gameState.playerRole) return;
@@ -129,37 +141,27 @@ function App() {
 
     if (selectedPiece) {
       const isTarget = validMoves.some(m => m.row === row && m.col === col);
-
       if (isTarget) {
-        await ctrl.makeMove(gId, selectedPiece.row, selectedPiece.col, row, col)
-          .catch(showError);
+        await ctrl.makeMove(gId, selectedPiece.row, selectedPiece.col, row, col).catch(showError);
         return;
       }
-
-      // Clicou em outra peça própria: troca seleção
       if (piece && piece.color === gameState.playerRole && !gameState.inMultiCapture) {
         await ctrl.selectPiece(gId, row, col).catch(showError);
         return;
       }
-
-      // Deseleciona
-      if (!gameState.inMultiCapture) {
-        setSelectedPiece(null);
-        setValidMoves([]);
-      }
+      if (!gameState.inMultiCapture) { setSelectedPiece(null); setValidMoves([]); }
       return;
     }
 
-    if (piece && piece.color === gameState.playerRole) {
+    if (piece && piece.color === gameState.playerRole)
       await ctrl.selectPiece(gId, row, col).catch(showError);
-    }
   }, [gameState, selectedPiece, validMoves]);
 
   const handleRefreshGames = useCallback(() => {
     controllerRef.current?.getOpenGames().catch(console.error);
   }, []);
 
-  const handleCreateGame = useCallback(() => {
+  const handleCreateGame  = useCallback(() => {
     controllerRef.current?.createGame().catch(showError);
   }, []);
 
@@ -179,18 +181,15 @@ function App() {
     setJoinRequest(false);
   }, []);
 
-  // Dispara vibração na peça por 520ms e limpa
   const triggerShake = useCallback((row, col) => {
     setShakingCell({ row, col });
     setTimeout(() => setShakingCell(null), 520);
   }, []);
 
-  /* ── Drag & Drop ─────────────────────────────────────── */
   const handleDragStart = useCallback((row, col) => {
     const ctrl = controllerRef.current;
     const gId  = gameIdRef.current;
     setDragSource({ row, col });
-    // Seleciona a peça para carregar movimentos válidos
     if (ctrl && gId) ctrl.selectPiece(gId, row, col).catch(console.error);
   }, []);
 
@@ -199,27 +198,15 @@ function App() {
     const moves = validMovesRef.current;
     const ctrl  = controllerRef.current;
     const gId   = gameIdRef.current;
-
     setDragSource(null);
     if (!src || !ctrl || !gId) return;
-
     const { row: fromRow, col: fromCol } = src;
-
-    // Soltou na mesma casa → ignora sem vibrar
     if (fromRow === toRow && fromCol === toCol) return;
-
     const isValid = moves.some(m => m.row === toRow && m.col === toCol);
-
-    if (!isValid) {
-      triggerShake(fromRow, fromCol);
-      return;
-    }
-
+    if (!isValid) { triggerShake(fromRow, fromCol); return; }
     try {
       await ctrl.makeMove(gId, fromRow, fromCol, toRow, toCol);
-    } catch {
-      triggerShake(fromRow, fromCol);
-    }
+    } catch { triggerShake(fromRow, fromCol); }
   }, [triggerShake]);
 
   const handleAbandon = useCallback(() => {
@@ -229,6 +216,13 @@ function App() {
     setConfirmAbandon(false);
   }, []);
 
+  const handleBackToLobby = () => {
+    setGameId(null);
+    setGameState(null);
+    setOpponentAbandoned(false);
+  };
+
+  /* ── Carregando ─────────────────────────────────────────── */
   if (!connected) {
     return (
       <div className="loading">
@@ -238,9 +232,10 @@ function App() {
     );
   }
 
-  const inGame = gameId && gameState && gameState.status !== 'waiting';
+  const inGame  = gameId && gameState && gameState.status !== 'waiting';
   const waiting = gameId && gameState?.status === 'waiting';
 
+  /* ── Lobby ──────────────────────────────────────────────── */
   if (!inGame) {
     return (
       <Lobby
@@ -260,26 +255,19 @@ function App() {
     );
   }
 
+  /* ── Partida ────────────────────────────────────────────── */
   const isFinished = gameState.status === 'finished';
 
-  const handleBackToLobby = () => {
-    setGameId(null);
-    setGameState(null);
-    setOpponentAbandoned(false);
-  };
+  const mm = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+  const ss = String(elapsedTime % 60).padStart(2, '0');
 
   return (
     <div className="app">
-      <div className="app-header">
-        <h1 className="title">♟ Jogo de Damas</h1>
-        <button className="btn-help" onClick={() => setShowHelp(true)} title="Regras do jogo">
-          ?
-        </button>
-      </div>
 
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {error && <div className="error-toast">{error}</div>}
 
+      {/* Adversário abandonou */}
       {opponentAbandoned && (
         <div className="abandon-overlay">
           <div className="abandon-card">
@@ -293,33 +281,74 @@ function App() {
         </div>
       )}
 
-      <GameInfo gameState={gameState} elapsedTime={elapsedTime} />
-      <GameBoard
-        gameState={gameState}
-        selectedPiece={selectedPiece}
-        validMoves={validMoves}
-        shakingCell={shakingCell}
-        onCellClick={handleCellClick}
-        onDragStart={handleDragStart}
-        onDrop={handleDrop}
-      />
-
-      <div className="game-actions">
-        {isFinished ? (
-          <button className="btn-primary" onClick={handleBackToLobby}>
-            Voltar ao Lobby
-          </button>
-        ) : confirmAbandon ? (
-          <div className="confirm-abandon">
-            <span>Tem certeza? {gameState.status === 'playing' ? 'Você perderá a partida.' : 'A sala será cancelada.'}</span>
-            <button className="btn-danger" onClick={handleAbandon}>Sim, sair</button>
-            <button className="btn-ghost" onClick={() => setConfirmAbandon(false)}>Cancelar</button>
+      {/* Confirmação de abandono */}
+      {confirmAbandon && (
+        <div className="confirm-overlay">
+          <div className="confirm-card">
+            <p>
+              {gameState.status === 'playing'
+                ? 'Tem certeza? Você perderá a partida.'
+                : 'Cancelar a sala?'}
+            </p>
+            <div className="confirm-actions">
+              <button className="btn-danger" onClick={handleAbandon}>Sim, sair</button>
+              <button className="btn-ghost-sm" onClick={() => setConfirmAbandon(false)}>Cancelar</button>
+            </div>
           </div>
-        ) : (
-          <button className="btn-outline-danger" onClick={() => setConfirmAbandon(true)}>
-            {gameState.status === 'playing' ? 'Abandonar Partida' : 'Cancelar Sala'}
+        </div>
+      )}
+
+      {/* Título */}
+      <h1 className="title game-title">♟ Jogo de Damas</h1>
+
+      {/* Temporizador acima do tabuleiro */}
+      <div className={`board-timer ${isFinished ? 'board-timer-finished' : ''}`}>
+        <span className="board-timer-icon">⏱</span>
+        <span className="board-timer-value">{mm}:{ss}</span>
+        {isFinished && <span className="board-timer-label">duração</span>}
+      </div>
+
+      {/* Área principal: lateral esquerda | tabuleiro | lateral direita */}
+      <div className="game-area">
+
+        {/* Painel esquerdo: ícones de ação */}
+        <div className="side-panel side-left">
+          {gameState.playerRole && (
+            <div className="role-chip">
+              <div className={`role-chip-piece ${gameState.playerRole === 'red' ? 'piece-red' : 'piece-black'}`} />
+              <span className="role-chip-label">Você</span>
+            </div>
+          )}
+
+          <button className="icon-btn" onClick={() => setShowHelp(true)} title="Regras do jogo">
+            <HelpSvg />
           </button>
-        )}
+
+          <button
+            className={`icon-btn ${isFinished ? 'icon-btn-home' : 'icon-btn-exit'}`}
+            onClick={isFinished ? handleBackToLobby : () => setConfirmAbandon(true)}
+            title={isFinished ? 'Voltar ao Lobby' : 'Abandonar partida'}
+          >
+            {isFinished ? <HomeSvg /> : <ExitSvg />}
+          </button>
+        </div>
+
+        {/* Tabuleiro */}
+        <GameBoard
+          gameState={gameState}
+          selectedPiece={selectedPiece}
+          validMoves={validMoves}
+          shakingCell={shakingCell}
+          onCellClick={handleCellClick}
+          onDragStart={handleDragStart}
+          onDrop={handleDrop}
+        />
+
+        {/* Painel direito: info dos jogadores */}
+        <div className="side-panel side-right">
+          <GameInfo gameState={gameState} />
+        </div>
+
       </div>
     </div>
   );
