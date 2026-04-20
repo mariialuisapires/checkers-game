@@ -154,8 +154,14 @@ public class GameHub : Hub
                 : game.Player1ConnectionId;
 
             if (otherId != null)
+            {
                 await Clients.Client(otherId)
                     .SendAsync("GameStateUpdated", _gameService.ToDto(game, otherId));
+
+                // Só notifica o overlay se a partida estava em andamento (não sala de espera)
+                if (game.Status == GameStatus.Finished && game.Winner.HasValue)
+                    await Clients.Client(otherId).SendAsync("OpponentAbandoned");
+            }
         }
 
         await base.OnDisconnectedAsync(exception);
