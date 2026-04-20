@@ -5,6 +5,8 @@ import Lobby from './components/Lobby.jsx';
 import GameBoard from './components/GameBoard.jsx';
 import GameInfo from './components/GameInfo.jsx';
 import HelpModal from './components/HelpModal.jsx';
+import WinScreen  from './components/WinScreen.jsx';
+import LoseScreen from './components/LoseScreen.jsx';
 
 /* ── SVG Icons ──────────────────────────────────────────────── */
 const HelpSvg = () => (
@@ -256,7 +258,9 @@ function App() {
   }
 
   /* ── Partida ────────────────────────────────────────────── */
-  const isFinished = gameState.status === 'finished';
+  const isFinished  = gameState.status === 'finished';
+  const isWinner    = isFinished && gameState.winner === gameState.playerRole;
+  const isLoser     = isFinished && gameState.playerRole && gameState.winner !== gameState.playerRole;
 
   const mm = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
   const ss = String(elapsedTime % 60).padStart(2, '0');
@@ -265,6 +269,8 @@ function App() {
     <div className="app">
 
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      {isWinner && <WinScreen  onClose={handleBackToLobby} />}
+      {isLoser  && <LoseScreen onClose={handleBackToLobby} />}
       {error && <div className="error-toast">{error}</div>}
 
       {/* Adversário abandonou */}

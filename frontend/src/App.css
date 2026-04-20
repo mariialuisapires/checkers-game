@@ -829,6 +829,225 @@ body {
 
 .modal-footer .btn-primary { width: auto; padding: 10px 28px; }
 
+/* ── Tela de Vitória ─────────────────────────────────────── */
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  animation: fadeIn 0.35s ease;
+  overflow: hidden;
+}
+
+/* Palco dos confetes (cobre toda a tela) */
+.confetti-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -16px;
+  opacity: 0;
+  animation: confettiFall var(--dur, 3.2s) ease-in var(--delay, 0s) forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(var(--rot-start, 0deg));
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(25vh) translateX(var(--wobble, 15px)) rotate(calc(var(--rot-start, 0deg) + 90deg));
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(50vh) translateX(0px) rotate(calc(var(--rot-start, 0deg) + 180deg));
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(75vh) translateX(calc(var(--wobble, 15px) * -1)) rotate(calc(var(--rot-start, 0deg) + 270deg));
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(105vh) translateX(0) rotate(var(--rot-end, 720deg));
+    opacity: 0;
+  }
+}
+
+/* Card de vitória */
+.win-card {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(145deg, #1a1f2e, #161b22);
+  border: 2px solid #ffd700;
+  border-radius: 24px;
+  padding: 48px 56px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow:
+    0 0 0 4px rgba(255, 215, 0, 0.12),
+    0 0 60px rgba(255, 215, 0, 0.2),
+    0 24px 64px rgba(0, 0, 0, 0.7);
+  animation: winCardPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes winCardPop {
+  from { transform: scale(0.6) translateY(30px); opacity: 0; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+.win-trophy {
+  font-size: 5rem;
+  line-height: 1;
+  animation: trophyShake 0.7s ease-in-out 0.5s infinite;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.7));
+}
+
+@keyframes trophyShake {
+  0%   { transform: rotate(0deg)   scale(1);    }
+  10%  { transform: rotate(-12deg) scale(1.08); }
+  20%  { transform: rotate(12deg)  scale(1.08); }
+  30%  { transform: rotate(-9deg)  scale(1.05); }
+  40%  { transform: rotate(9deg)   scale(1.05); }
+  50%  { transform: rotate(-5deg)  scale(1.03); }
+  60%  { transform: rotate(5deg)   scale(1.03); }
+  70%  { transform: rotate(-2deg)  scale(1.01); }
+  80%  { transform: rotate(2deg)   scale(1.01); }
+  90%  { transform: rotate(0deg)   scale(1);    }
+  100% { transform: rotate(0deg)   scale(1);    }
+}
+
+.win-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #ffd700;
+  letter-spacing: -0.5px;
+  text-shadow: 0 0 24px rgba(255, 215, 0, 0.5);
+  margin: 0;
+  animation: winTitleGlow 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes winTitleGlow {
+  from { text-shadow: 0 0 12px rgba(255, 215, 0, 0.4); }
+  to   { text-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 215, 0, 0.3); }
+}
+
+.win-subtitle {
+  color: #8b949e;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.win-btn {
+  width: auto !important;
+  padding: 13px 36px !important;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+/* ── Tela de Derrota ─────────────────────────────────────── */
+.lose-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  animation: fadeIn 0.35s ease;
+  overflow: hidden;
+}
+
+/* Lágrima: oval azul apontando pra baixo */
+.tear-piece {
+  position: absolute;
+  top: -20px;
+  aspect-ratio: 1 / 1.6;
+  background: radial-gradient(ellipse at 40% 30%, #a0c8ff, #2c6fad);
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  animation: tearFall var(--dur, 3s) ease-in var(--delay, 0s) forwards;
+}
+
+@keyframes tearFall {
+  0%   { transform: translateY(0)     scaleX(1);    opacity: 1;   }
+  40%  { transform: translateY(40vh)  scaleX(0.85); opacity: 0.9; }
+  80%  { transform: translateY(85vh)  scaleX(1);    opacity: 0.6; }
+  100% { transform: translateY(108vh) scaleX(0.9);  opacity: 0;   }
+}
+
+.lose-card {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(145deg, #12151e, #0d1117);
+  border: 2px solid #4a6fa5;
+  border-radius: 24px;
+  padding: 48px 56px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow:
+    0 0 0 4px rgba(74, 111, 165, 0.12),
+    0 0 50px rgba(44, 111, 173, 0.18),
+    0 24px 64px rgba(0, 0, 0, 0.8);
+  animation: winCardPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.lose-emoji {
+  font-size: 5rem;
+  line-height: 1;
+  animation: loseSlump 2.4s ease-in-out 0.4s infinite;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 4px 12px rgba(44, 111, 173, 0.5));
+}
+
+@keyframes loseSlump {
+  0%   { transform: rotate(0deg)  translateY(0);    }
+  15%  { transform: rotate(-6deg) translateY(2px);  }
+  30%  { transform: rotate(4deg)  translateY(4px);  }
+  45%  { transform: rotate(-3deg) translateY(6px);  }
+  60%  { transform: rotate(2deg)  translateY(4px);  }
+  75%  { transform: rotate(-1deg) translateY(2px);  }
+  100% { transform: rotate(0deg)  translateY(0);    }
+}
+
+.lose-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #6b9fd4;
+  letter-spacing: -0.5px;
+  margin: 0;
+  animation: loseTitlePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes loseTitlePulse {
+  from { text-shadow: 0 0 8px rgba(74, 111, 165, 0.3); }
+  to   { text-shadow: 0 0 22px rgba(74, 111, 165, 0.7); }
+}
+
+.lose-subtitle {
+  color: #6e7681;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.lose-btn {
+  width: auto !important;
+  padding: 13px 36px !important;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
 /* ── Overlay de abandono ─────────────────────────────────── */
 .abandon-overlay {
   position: fixed;
