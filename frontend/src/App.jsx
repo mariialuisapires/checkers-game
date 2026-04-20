@@ -15,6 +15,8 @@ function App() {
   const [openGames, setOpenGames] = useState([]);
   const [error, setError] = useState(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [joinRequest, setJoinRequest] = useState(false);   // Player 1: tem solicitação pendente
+  const [joinPending, setJoinPending] = useState(null);    // Player 2: aguardando aprovação (gameId)
   const [dragSource, setDragSource] = useState(null);
   const [shakingCell, setShakingCell] = useState(null);
   const [opponentAbandoned, setOpponentAbandoned] = useState(false);
@@ -63,6 +65,8 @@ function App() {
       setSelectedPiece(null);
       setValidMoves([]);
       setError(null);
+      setJoinRequest(false);
+      setJoinPending(null);
 
       // Captura múltipla: auto-seleciona a peça e busca destinos válidos
       if (state.inMultiCapture && state.multiCapturePiece
@@ -87,6 +91,18 @@ function App() {
 
     conn.on('OpponentAbandoned', () => {
       setOpponentAbandoned(true);
+    });
+
+    // Player 2: servidor confirmou que a solicitação foi enviada ao criador
+    conn.on('JoinRequested', (gId) => setJoinPending(gId));
+
+    // Player 1: chegou uma solicitação de entrada
+    conn.on('JoinRequest', () => setJoinRequest(true));
+
+    // Player 2: criador recusou
+    conn.on('JoinDenied', () => {
+      setJoinPending(null);
+      showError('Solicitação recusada pelo criador da partida.');
     });
 
     conn.on('OpenGames', (games) => setOpenGames(games));
@@ -148,7 +164,19 @@ function App() {
   }, []);
 
   const handleJoinGame = useCallback((id) => {
-    controllerRef.current?.joinGame(id).catch(showError);
+    controllerRef.current?.requestJoin(id).catch(showError);
+  }, []);
+
+  const handleApproveJoin = useCallback(() => {
+    const gId = gameIdRef.current;
+    if (gId) controllerRef.current?.approveJoin(gId).catch(showError);
+    setJoinRequest(false);
+  }, []);
+
+  const handleDenyJoin = useCallback(() => {
+    const gId = gameIdRef.current;
+    if (gId) controllerRef.current?.denyJoin(gId).catch(showError);
+    setJoinRequest(false);
   }, []);
 
   // Dispara vibração na peça por 520ms e limpa
@@ -218,9 +246,13 @@ function App() {
       <Lobby
         gameId={gameId}
         waiting={waiting}
+        joinRequest={joinRequest}
+        joinPending={joinPending}
         openGames={openGames}
         onCreateGame={handleCreateGame}
         onJoinGame={handleJoinGame}
+        onApproveJoin={handleApproveJoin}
+        onDenyJoin={handleDenyJoin}
         onRefreshGames={handleRefreshGames}
         onCancel={handleAbandon}
         error={error}

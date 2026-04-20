@@ -10,7 +10,7 @@ public class GameHub : Hub
 
     public GameHub(GameService gameService) => _gameService = gameService;
 
-    // Cria uma nova partida e coloca o criador como Jogador 1 (Vermelho)
+    // Cria uma nova partida (Jogador 1 / Vermelho)
     public async Task CreateGame()
     {
         var game = _gameService.CreateGame(Context.ConnectionId);
@@ -20,48 +20,48 @@ public class GameHub : Hub
             _gameService.ToDto(game, Context.ConnectionId));
     }
 
-    // Entra em uma partida existente como Jogador 2 (Preto)
-    public async Task JoinGame(string gameId)
+    // Player 2 solicita entrada — o criador precisa aprovar
+    public async Task RequestJoin(string gameId)
     {
-        var game = _gameService.GetGame(gameId);
-        if (game == null)
+        var (success, hostId, error) = _gameService.RequestJoin(gameId, Context.ConnectionId);
+        if (!success)
         {
-            await Clients.Caller.SendAsync("Error", "Jogo não encontrado. Verifique o código e tente novamente.");
+            await Clients.Caller.SendAsync("Error", error);
             return;
         }
 
-        // Impede que o criador entre na própria partida
-        if (game.Player1ConnectionId == Context.ConnectionId)
-        {
-            await Clients.Caller.SendAsync("Error", "Você criou esta partida. Aguarde outro jogador entrar com o código.");
-            return;
-        }
+        // Avisa Player 2 que está aguardando aprovação
+        await Clients.Caller.SendAsync("JoinRequested", gameId);
 
-        if (game.Status == GameStatus.Playing)
-        {
-            await Clients.Caller.SendAsync("Error", "Esta partida já está em andamento.");
-            return;
-        }
+        // Envia solicitação ao criador da sala
+        if (hostId != null)
+            await Clients.Client(hostId).SendAsync("JoinRequest");
+    }
 
-        if (game.Status == GameStatus.Finished)
-        {
-            await Clients.Caller.SendAsync("Error", "Esta partida já foi encerrada.");
-            return;
-        }
+    // Criador aprova a entrada do candidato
+    public async Task ApproveJoin(string gameId)
+    {
+        var (success, player2Id) = _gameService.ApproveJoin(gameId, Context.ConnectionId);
+        if (!success || player2Id == null) return;
 
-        if (!_gameService.JoinGame(game, Context.ConnectionId))
-        {
-            await Clients.Caller.SendAsync("Error", "Não foi possível entrar nesta partida.");
-            return;
-        }
+        var game = _gameService.GetGame(gameId)!;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+        await Groups.AddToGroupAsync(player2Id, gameId);
 
-        // Envia estado personalizado para cada jogador (papel diferente)
         await Clients.Client(game.Player1ConnectionId!)
             .SendAsync("GameStateUpdated", _gameService.ToDto(game, game.Player1ConnectionId));
-        await Clients.Client(game.Player2ConnectionId!)
-            .SendAsync("GameStateUpdated", _gameService.ToDto(game, game.Player2ConnectionId));
+        await Clients.Client(player2Id)
+            .SendAsync("GameStateUpdated", _gameService.ToDto(game, player2Id));
+    }
+
+    // Criador recusa a entrada do candidato
+    public async Task DenyJoin(string gameId)
+    {
+        var (success, requesterId) = _gameService.DenyJoin(gameId, Context.ConnectionId);
+        if (!success || requesterId == null) return;
+
+        await Clients.Client(requesterId).SendAsync("JoinDenied");
     }
 
     // Solicita os movimentos válidos para a peça em (row, col)
@@ -84,7 +84,6 @@ public class GameHub : Hub
             return;
         }
 
-        // Valida se é a vez do jogador que enviou o comando
         string expectedId = game.CurrentPlayer == PlayerColor.Red
             ? game.Player1ConnectionId!
             : game.Player2ConnectionId!;
@@ -102,7 +101,6 @@ public class GameHub : Hub
             return;
         }
 
-        // Notifica cada jogador com seu estado personalizado
         if (game.Player1ConnectionId != null)
             await Clients.Client(game.Player1ConnectionId)
                 .SendAsync("GameStateUpdated", _gameService.ToDto(game, game.Player1ConnectionId));
@@ -111,7 +109,7 @@ public class GameHub : Hub
                 .SendAsync("GameStateUpdated", _gameService.ToDto(game, game.Player2ConnectionId));
     }
 
-    // Abandona a partida: quem chama perde (ou cancela a sala se ainda aguardando)
+    // Abandona a partida
     public async Task AbandonGame(string gameId)
     {
         var (success, opponentId) = _gameService.AbandonGame(gameId, Context.ConnectionId);
@@ -119,16 +117,13 @@ public class GameHub : Hub
 
         var game = _gameService.GetGame(gameId)!;
 
-        // Notifica o próprio jogador para voltar ao lobby
         await Clients.Caller.SendAsync("GameAbandoned");
 
-        // Notifica o oponente: estado final + aviso explícito de abandono
         if (opponentId != null)
         {
             await Clients.Client(opponentId)
                 .SendAsync("GameStateUpdated", _gameService.ToDto(game, opponentId));
-            await Clients.Client(opponentId)
-                .SendAsync("OpponentAbandoned");
+            await Clients.Client(opponentId).SendAsync("OpponentAbandoned");
         }
     }
 
@@ -143,6 +138,11 @@ public class GameHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        // Notifica candidato pendente se o criador desconectou enquanto aguardava
+        string? pendingRequesterId = _gameService.GetPendingRequester(Context.ConnectionId);
+        if (pendingRequesterId != null)
+            await Clients.Client(pendingRequesterId).SendAsync("JoinDenied");
+
         var game = _gameService.FindGameByConnection(Context.ConnectionId);
 
         _gameService.HandleDisconnect(Context.ConnectionId);
@@ -158,7 +158,6 @@ public class GameHub : Hub
                 await Clients.Client(otherId)
                     .SendAsync("GameStateUpdated", _gameService.ToDto(game, otherId));
 
-                // Só notifica o overlay se a partida estava em andamento (não sala de espera)
                 if (game.Status == GameStatus.Finished && game.Winner.HasValue)
                     await Clients.Client(otherId).SendAsync("OpponentAbandoned");
             }

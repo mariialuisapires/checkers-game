@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-function Lobby({ gameId, waiting, openGames, onCreateGame, onJoinGame, onRefreshGames, onCancel, error }) {
+function Lobby({
+  gameId, waiting, joinRequest, joinPending,
+  openGames, onCreateGame, onJoinGame,
+  onApproveJoin, onDenyJoin,
+  onRefreshGames, onCancel, error,
+}) {
   const [joinId, setJoinId] = useState('');
 
   useEffect(() => {
@@ -9,24 +14,67 @@ function Lobby({ gameId, waiting, openGames, onCreateGame, onJoinGame, onRefresh
     return () => clearInterval(interval);
   }, [onRefreshGames]);
 
-  if (waiting) {
+  /* ── Player 2: aguardando aprovação ──────────────────── */
+  if (joinPending) {
     return (
       <div className="lobby">
         <h1 className="title">♟ Jogo de Damas</h1>
         <div className="waiting-card">
-          <div className="waiting-icon">⏳</div>
-          <h2>Aguardando Jogador 2...</h2>
-          <p>Compartilhe o código abaixo com seu adversário:</p>
-          <div className="game-code">{gameId}</div>
-          <p className="hint">O segundo jogador deve entrar com este código</p>
-          <button className="btn-outline-danger" style={{ marginTop: '20px' }} onClick={onCancel}>
-            Cancelar Sala
+          <div className="waiting-icon pending-spin">⏳</div>
+          <h2>Aguardando aprovação...</h2>
+          <p>O criador da sala precisa aceitar sua entrada.</p>
+          <div className="game-code">{joinPending}</div>
+          <button
+            className="btn-outline-danger"
+            style={{ marginTop: '20px' }}
+            onClick={() => window.location.reload()}
+          >
+            Cancelar solicitação
           </button>
         </div>
       </div>
     );
   }
 
+  /* ── Player 1: sala de espera com/sem solicitação pendente ── */
+  if (waiting) {
+    return (
+      <div className="lobby">
+        <h1 className="title">♟ Jogo de Damas</h1>
+
+        {joinRequest ? (
+          /* Solicitação de entrada recebida */
+          <div className="waiting-card join-request-card">
+            <div className="join-request-icon">🔔</div>
+            <h2>Solicitação de entrada</h2>
+            <p>Um jogador quer entrar na sua partida.<br />Deseja permitir?</p>
+            <div className="join-request-actions">
+              <button className="btn-approve" onClick={onApproveJoin}>
+                ✓ Aceitar
+              </button>
+              <button className="btn-deny" onClick={onDenyJoin}>
+                ✕ Recusar
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Aguardando sem solicitação */
+          <div className="waiting-card">
+            <div className="waiting-icon">⏳</div>
+            <h2>Aguardando Jogador 2...</h2>
+            <p>Compartilhe o código abaixo com seu adversário:</p>
+            <div className="game-code">{gameId}</div>
+            <p className="hint">O segundo jogador deve entrar com este código — você precisará aprovar a entrada.</p>
+            <button className="btn-outline-danger" style={{ marginTop: '20px' }} onClick={onCancel}>
+              Cancelar Sala
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ── Lobby principal ─────────────────────────────────── */
   return (
     <div className="lobby">
       <h1 className="title">♟ Jogo de Damas</h1>
@@ -57,7 +105,7 @@ function Lobby({ gameId, waiting, openGames, onCreateGame, onJoinGame, onRefresh
               onClick={() => onJoinGame(joinId)}
               disabled={!joinId}
             >
-              Entrar
+              Solicitar entrada
             </button>
           </div>
         </div>
@@ -71,7 +119,7 @@ function Lobby({ gameId, waiting, openGames, onCreateGame, onJoinGame, onRefresh
                   <span className="game-list-id">{g.gameId}</span>
                   <span className="game-list-badge">Aguardando</span>
                   <button className="btn-small" onClick={() => onJoinGame(g.gameId)}>
-                    Entrar
+                    Solicitar
                   </button>
                 </div>
               ))}

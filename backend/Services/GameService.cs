@@ -26,13 +26,55 @@ public class GameService
             g.Player1ConnectionId == connectionId ||
             g.Player2ConnectionId == connectionId);
 
-    public bool JoinGame(GameState game, string connectionId)
+    // Solicita entrada: guarda o candidato para aprovação do criador
+    public (bool Success, string? HostId, string? Error) RequestJoin(string gameId, string requesterId)
     {
-        if (game.Status != GameStatus.Waiting || game.Player2ConnectionId != null)
-            return false;
-        game.Player2ConnectionId = connectionId;
+        var game = GetGame(gameId);
+        if (game == null)
+            return (false, null, "Jogo não encontrado. Verifique o código.");
+        if (game.Player1ConnectionId == requesterId)
+            return (false, null, "Você criou esta partida. Aguarde outro jogador.");
+        if (game.Status == GameStatus.Playing)
+            return (false, null, "Esta partida já está em andamento.");
+        if (game.Status == GameStatus.Finished)
+            return (false, null, "Esta partida já foi encerrada.");
+        if (game.PendingJoinConnectionId != null)
+            return (false, null, "Já há uma solicitação pendente para esta partida.");
+
+        game.PendingJoinConnectionId = requesterId;
+        return (true, game.Player1ConnectionId, null);
+    }
+
+    // Criador aprova a entrada do candidato
+    public (bool Success, string? Player2Id) ApproveJoin(string gameId, string hostId)
+    {
+        var game = GetGame(gameId);
+        if (game == null || game.Player1ConnectionId != hostId) return (false, null);
+        if (game.PendingJoinConnectionId == null) return (false, null);
+
+        var player2Id = game.PendingJoinConnectionId;
+        game.Player2ConnectionId = player2Id;
+        game.PendingJoinConnectionId = null;
         game.Status = GameStatus.Playing;
-        return true;
+        return (true, player2Id);
+    }
+
+    // Criador recusa a entrada do candidato
+    public (bool Success, string? RequesterId) DenyJoin(string gameId, string hostId)
+    {
+        var game = GetGame(gameId);
+        if (game == null || game.Player1ConnectionId != hostId) return (false, null);
+
+        var requesterId = game.PendingJoinConnectionId;
+        game.PendingJoinConnectionId = null;
+        return (true, requesterId);
+    }
+
+    // Retorna o ID do candidato pendente de um jogo cujo host desconectou
+    public string? GetPendingRequester(string hostConnectionId)
+    {
+        var game = _games.Values.FirstOrDefault(g => g.Player1ConnectionId == hostConnectionId);
+        return game?.PendingJoinConnectionId;
     }
 
     private static void InitializeBoard(GameState game)

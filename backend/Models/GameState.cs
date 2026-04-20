@@ -11,6 +11,7 @@ public class GameState
     public PlayerColor? Winner { get; set; }
     public string? Player1ConnectionId { get; set; }
     public string? Player2ConnectionId { get; set; }
+    public string? PendingJoinConnectionId { get; set; }
     public bool InMultiCapture { get; set; }
     public int? MultiCaptureRow { get; set; }
     public int? MultiCaptureCol { get; set; }

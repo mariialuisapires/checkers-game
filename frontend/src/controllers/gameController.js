@@ -8,8 +8,16 @@ export class GameController {
     return this.connection.invoke('CreateGame');
   }
 
-  joinGame(gameId) {
-    return this.connection.invoke('JoinGame', gameId);
+  requestJoin(gameId) {
+    return this.connection.invoke('RequestJoin', gameId);
+  }
+
+  approveJoin(gameId) {
+    return this.connection.invoke('ApproveJoin', gameId);
+  }
+
+  denyJoin(gameId) {
+    return this.connection.invoke('DenyJoin', gameId);
   }
 
   selectPiece(gameId, row, col) {
